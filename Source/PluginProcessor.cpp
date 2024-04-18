@@ -9,6 +9,10 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
+using namespace juce;
+using namespace juce::dsp;
+using namespace juce::dsp::IIR;
+
 //==============================================================================
 ToneShaper2AudioProcessor::ToneShaper2AudioProcessor()
 #ifndef JucePlugin_PreferredChannelConfigurations
@@ -93,8 +97,26 @@ void ToneShaper2AudioProcessor::changeProgramName (int index, const juce::String
 //==============================================================================
 void ToneShaper2AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
-    // Use this method as the place to do any pre-playback
-    // initialisation that you need..
+	ProcessSpec spec;
+
+	spec.maximumBlockSize = samplesPerBlock;
+	spec.numChannels = getTotalNumInputChannels();
+	spec.sampleRate = sampleRate;
+
+	lowBell.prepare(spec);
+	highBell.prepare(spec);
+
+	setSettings();
+}
+
+void ToneShaper2AudioProcessor::setSettings()
+{
+	ChainSettings settings = getSettings(apvts);
+
+	float lowGain = Decibels::decibelsToGain(4.5f - 0.9f * settings.midsBalance);
+	float highGain = Decibels::decibelsToGain(1.2f * settings.midsBalance - 6.f);
+	lowBell.coefficients = Coefficients<float>().makePeakFilter(getSampleRate(), 400.f, 1.f, lowGain);
+	highBell.coefficients = Coefficients<float>().makePeakFilter(getSampleRate(), 2500.f, 1.f, highGain);
 }
 
 void ToneShaper2AudioProcessor::releaseResources()
@@ -131,25 +153,24 @@ bool ToneShaper2AudioProcessor::isBusesLayoutSupported (const BusesLayout& layou
 
 void ToneShaper2AudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
 {
+	setSettings();
+
     juce::ScopedNoDenormals noDenormals;
     auto totalNumInputChannels  = getTotalNumInputChannels();
     auto totalNumOutputChannels = getTotalNumOutputChannels();
 
-    // In case we have more outputs than inputs, this code clears any output
-    // channels that didn't contain input data, (because these aren't
-    // guaranteed to be empty - they may contain garbage).
-    // This is here to avoid people getting screaming feedback
-    // when they first compile a plugin, but obviously you don't need to keep
-    // this code if your algorithm always overwrites all the output channels.
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
 
-    // This is the place where you'd normally do the guts of your plugin's
-    // audio processing...
-    // Make sure to reset the state if your inner loop is processing
-    // the samples and the outer loop is handling the channels.
-    // Alternatively, you can process the samples with the channels
-    // interleaved by keeping the same state.
+	AudioBlock<float> block(buffer);
+	//ProcessContextReplacing<float> context(block);
+
+	auto leftBlock = block.getSingleChannelBlock(0);
+	ProcessContextReplacing<float> leftContext(leftBlock);
+
+	lowBell.process(leftContext);
+	highBell.process(leftContext);
+
     for (int channel = 0; channel < totalNumInputChannels; ++channel)
     {
         auto* channelData = buffer.getWritePointer (channel);
@@ -161,7 +182,7 @@ void ToneShaper2AudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
 //==============================================================================
 bool ToneShaper2AudioProcessor::hasEditor() const
 {
-    return true; // (change this to false if you choose to not supply an editor)
+    return false; // (change this to false if you choose to not supply an editor)
 }
 
 juce::AudioProcessorEditor* ToneShaper2AudioProcessor::createEditor()
@@ -181,6 +202,24 @@ void ToneShaper2AudioProcessor::setStateInformation (const void* data, int sizeI
 {
     // You should use this method to restore your parameters from this memory block,
     // whose contents will have been created by the getStateInformation() call.
+}
+
+ChainSettings ToneShaper2AudioProcessor::getSettings(AudioProcessorValueTreeState& apvts)
+{
+	ChainSettings settings;
+
+	settings.midsBalance = apvts.getRawParameterValue("midsBalance")->load();
+
+	return settings;
+}
+
+AudioProcessorValueTreeState::ParameterLayout ToneShaper2AudioProcessor::createParameterLayout()
+{
+	AudioProcessorValueTreeState::ParameterLayout layout;
+
+	layout.add(std::make_unique<AudioParameterFloat>("midsBalance", "Mids Balance", NormalisableRange<float>(0.f, 10.f, 0.1f), 5.f));
+
+	return layout;
 }
 
 //==============================================================================

@@ -10,6 +10,11 @@
 
 #include <JuceHeader.h>
 
+struct ChainSettings
+{
+	float midsBalance;
+};
+
 //==============================================================================
 /**
 */
@@ -22,6 +27,7 @@ public:
 
     //==============================================================================
     void prepareToPlay (double sampleRate, int samplesPerBlock) override;
+	void setSettings();
     void releaseResources() override;
 
    #ifndef JucePlugin_PreferredChannelConfigurations
@@ -53,7 +59,14 @@ public:
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
 
+	ChainSettings getSettings(juce::AudioProcessorValueTreeState& apvts);
+
+	static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
+	juce::AudioProcessorValueTreeState apvts{ *this, nullptr, "Parameters", createParameterLayout() };
+
 private:
+	juce::dsp::IIR::Filter<float> lowBell, highBell;
+
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ToneShaper2AudioProcessor)
 };
