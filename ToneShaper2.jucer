@@ -1,9 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <JUCERPROJECT id="YI20LG" name="ToneShaper2" projectType="audioplug" useAppConfig="0"
-              addUsingNamespaceToJuceHeader="0" displaySplashScreen="1" jucerFormatVersion="1">
+              addUsingNamespaceToJuceHeader="0" displaySplashScreen="1" jucerFormatVersion="1"
+              companyWebsite="www.voicestudioeast.com" companyName="Voice Studio East"
+              companyEmail="info@voicestudioeast.com">
   <MAINGROUP id="qW72JO" name="ToneShaper2">
     <GROUP id="{2E688901-E987-9942-9EC7-E82D529A9655}" name="Source">
+      <GROUP id="{859114FC-1CD0-80F6-1AAF-7C3705D2DE5B}" name="vseframework">
+        <FILE id="DvnMDA" name="SmoothWrapper.cpp" compile="1" resource="0"
+              file="Source/vseframework/SmoothWrapper.cpp"/>
+        <FILE id="jW9WWN" name="SmoothWrapper.h" compile="0" resource="0" file="Source/vseframework/SmoothWrapper.h"/>
+      </GROUP>
       <FILE id="drRGIO" name="PluginProcessor.cpp" compile="1" resource="0"
             file="Source/PluginProcessor.cpp"/>
       <FILE id="l75eHa" name="PluginProcessor.h" compile="0" resource="0"
